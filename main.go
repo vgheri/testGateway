@@ -42,8 +42,8 @@ func main() {
 	r := mux.NewRouter().StrictSlash(true)
 	r.HandleFunc("/drivers/{id:[0-9]+}", ReceiveDriverLocation).Methods("PATCH")
 	http.Handle("/", r)
-	log.Printf("Server started and listening on port %d.", 3141)
-	log.Fatal(http.ListenAndServe(":1337", nil))
+	log.Printf("Server started and listening on port %d.", 1337)
+	log.Println(http.ListenAndServe(":1337", nil))
 	producer.Stop()
 }
 
