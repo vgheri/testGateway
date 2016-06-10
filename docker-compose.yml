@@ -1,0 +1,28 @@
+version: '2'
+services:
+  nsqlookupd:
+    image: nsqio/nsq
+    ports:
+      - "4160:4160"
+      - "4161:4161"
+    command: nsqlookupd
+
+  nsqd:
+    image: nsqio/nsq
+    ports:
+      - "4150:4150"
+      - "4151:4151"
+    command: nsqd --broadcast-address=172.17.0.1  --lookupd-tcp-address=172.17.0.1:4160
+
+  nsqadmin:
+    image: nsqio/nsq
+    ports:
+      - "4171:4171"
+    command: nsqadmin --lookupd-http-address=172.17.0.1:4161
+
+  testgateway:
+    image: testgateway
+    ports:
+      - "1337:1337"
+    depends_on:
+      - nsqd
