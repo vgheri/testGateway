@@ -20,6 +20,11 @@ services:
       - "4171:4171"
     command: nsqadmin --lookupd-http-address=172.17.0.1:4161
 
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    
   testgateway:
     image: testgateway
     ports:
@@ -32,3 +37,13 @@ services:
     image: testzombie
     ports:
       - "1338:1338"
+    depends_on:
+      - testlocation
+
+  testlocation:
+    image: testlocation
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+      - nsqd
