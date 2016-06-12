@@ -69,7 +69,7 @@ func ReceiveDriverLocation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := publish(driverID, &location); err != nil {
+	if err := publish(driverID, location); err != nil {
 		log.Printf("Could not publish to NSQ.")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -79,11 +79,11 @@ func ReceiveDriverLocation(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func publish(driverID int, location *Location) error {
+func publish(driverID int, location Location) error {
 
 	publishedLocation := &DriverLocation{
 		DriverID:  driverID,
-		Location:  *location,
+		Location:  location,
 		UpdatedAt: time.Now(),
 	}
 
@@ -91,7 +91,6 @@ func publish(driverID int, location *Location) error {
 	if err != nil {
 		return err
 	}
-
 	if err := producer.Publish(NSQstream, message); err != nil {
 		return err
 	}
