@@ -73,8 +73,8 @@ func GetIsZombieHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	locationURL := fmt.Sprintf("http://172.17.0.1:1338/drivers/%d", driverID)
-	result, err := getIsZombie(breaker, locationURL)
+	zombieURL := fmt.Sprintf("http://172.17.0.1:1338/drivers/%d", driverID)
+	result, err := getIsZombie(breaker, zombieURL)
 	if err != nil {
 		log.Printf(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
