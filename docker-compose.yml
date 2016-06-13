@@ -38,6 +38,7 @@ services:
     image: testzombie
     ports:
       - "1338:1338"
+    network_mode: "host"
     depends_on:
       - testlocation
 
