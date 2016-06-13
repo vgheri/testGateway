@@ -1,4 +1,4 @@
 How to run:
-`CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o testgateway .`
-`docker build -f Dockerfile -t testgateway .`
+`consul agent -dev -advertise=127.0.0.1 -ui`
 `docker-compose up`
+`sh send_two_near_coordinates.sh`

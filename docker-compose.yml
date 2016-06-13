@@ -24,11 +24,12 @@ services:
     image: redis
     ports:
       - "6379:6379"
-    
+
   testgateway:
     image: testgateway
     ports:
       - "1337:1337"
+    network_mode: "host"
     depends_on:
       - nsqd
       - testzombie

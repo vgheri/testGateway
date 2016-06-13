@@ -9,6 +9,7 @@ import (
 
 	"github.com/bitly/go-nsq"
 	"github.com/gorilla/mux"
+	consul "github.com/hashicorp/consul/api"
 )
 
 var producer *nsq.Producer
@@ -30,11 +31,21 @@ type DriverLocation struct {
 }
 
 func main() {
+	consulConfig := consul.DefaultConfig()
+	consulClient, err := consul.NewClient(consulConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = Register(consulClient, "gateway", "172.17.0.1", 1337)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	//NSQconnnection is the connection string to NSQ
 	NSQconnnection := "172.17.0.1:4150"
 
 	config := nsq.NewConfig()
-	var err error
+
 	producer, err = nsq.NewProducer(NSQconnnection, config)
 	if err != nil {
 		log.Fatal("Could not create a producer for nsq. Quit.")
@@ -45,6 +56,23 @@ func main() {
 	log.Printf("Server started and listening on port %d.", 1337)
 	log.Println(http.ListenAndServe(":1337", nil))
 	producer.Stop()
+	DeRegister(consulClient, "gateway")
+}
+
+// Register a service with consul local agent
+func Register(client *consul.Client, name, address string, port int) error {
+	reg := &consul.AgentServiceRegistration{
+		ID:      name,
+		Name:    name,
+		Address: address,
+		Port:    port,
+	}
+	return client.Agent().ServiceRegister(reg)
+}
+
+// DeRegister a service with consul local agent
+func DeRegister(client *consul.Client, id string) error {
+	return client.Agent().ServiceDeregister(id)
 }
 
 // ReceiveDriverLocation handles a driver's request to register its position at a given time
