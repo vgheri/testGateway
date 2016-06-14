@@ -44,21 +44,17 @@ var consulClient *consul.Client
 
 func main() {
 	var err error
-	consulConfig := consul.DefaultConfig()
-	consulClient, err = consul.NewClient(consulConfig)
-	if err != nil {
+	if consulClient, err = initConsul(); err != nil {
 		log.Fatal(err)
 	}
-	err = Register(consulClient, "gateway", "172.17.0.1", 1337)
+	err = register(consulClient, "gateway", "172.17.0.1", 1337)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	//NSQconnnection is the connection string to NSQ
 	NSQconnnection := "172.17.0.1:4150"
-
 	config := nsq.NewConfig()
-
 	producer, err = nsq.NewProducer(NSQconnnection, config)
 	if err != nil {
 		log.Fatal("Could not create a producer for nsq. Quit.")
@@ -70,36 +66,7 @@ func main() {
 	log.Printf("Server started and listening on port %d.", 1337)
 	log.Println(http.ListenAndServe(":1337", nil))
 	producer.Stop()
-	DeRegister(consulClient, "gateway")
-}
-
-// Register a service with consul local agent
-func Register(client *consul.Client, name, address string, port int) error {
-	reg := &consul.AgentServiceRegistration{
-		ID:      name,
-		Name:    name,
-		Address: address,
-		Port:    port,
-	}
-	return client.Agent().ServiceRegister(reg)
-}
-
-// DeRegister a service with consul local agent
-func DeRegister(client *consul.Client, id string) error {
-	return client.Agent().ServiceDeregister(id)
-}
-
-// Service return a service
-func Service(client *consul.Client, service, tag string) (string, error) {
-	passingOnly := true
-	addrs, _, err := client.Health().Service(service, tag, passingOnly, nil)
-	if len(addrs) == 0 && err == nil {
-		return "", fmt.Errorf("service ( %s ) was not found", service)
-	}
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s:%d", addrs[0].Service.Address, addrs[0].Service.Port), nil
+	unregister(consulClient, "gateway")
 }
 
 //GetIsZombieHandler Handles request for a specific driver
@@ -116,18 +83,18 @@ func GetIsZombieHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	zombieAddr, err := Service(consulClient, "zombie", "")
+
+	baseAddr, err := retrieveZombieServiceAddress(consulClient)
 	if err != nil {
 		log.Printf(err.Error())
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	zombieURL := fmt.Sprintf("http://%s/drivers/%d", zombieAddr, driverID)
-	log.Printf("Address received %s, Address built %s", zombieAddr, zombieURL)
+	zombieURL := fmt.Sprintf("http://%s/drivers/%d", baseAddr, driverID)
 	result, err := getIsZombie(breaker, zombieURL)
 	if err != nil {
 		log.Printf(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
@@ -212,4 +179,8 @@ func publish(driverID int, location Location) error {
 		return err
 	}
 	return nil
+}
+
+func retrieveZombieServiceAddress(client *consul.Client) (string, error) {
+	return service(consulClient, "zombie", "")
 }
