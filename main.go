@@ -40,9 +40,12 @@ type ZombieResponse struct {
 	Zombie bool `json:"zombie"`
 }
 
+var consulClient *consul.Client
+
 func main() {
+	var err error
 	consulConfig := consul.DefaultConfig()
-	consulClient, err := consul.NewClient(consulConfig)
+	consulClient, err = consul.NewClient(consulConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -86,6 +89,19 @@ func DeRegister(client *consul.Client, id string) error {
 	return client.Agent().ServiceDeregister(id)
 }
 
+// Service return a service
+func Service(client *consul.Client, service, tag string) (string, error) {
+	passingOnly := true
+	addrs, _, err := client.Health().Service(service, tag, passingOnly, nil)
+	if len(addrs) == 0 && err == nil {
+		return "", fmt.Errorf("service ( %s ) was not found", service)
+	}
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s:%d", addrs[0].Service.Address, addrs[0].Service.Port), nil
+}
+
 //GetIsZombieHandler Handles request for a specific driver
 func GetIsZombieHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("\t%s",
@@ -100,8 +116,14 @@ func GetIsZombieHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	zombieURL := fmt.Sprintf("http://172.17.0.1:1338/drivers/%d", driverID)
+	zombieAddr, err := Service(consulClient, "zombie", "")
+	if err != nil {
+		log.Printf(err.Error())
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	zombieURL := fmt.Sprintf("http://%s/drivers/%d", zombieAddr, driverID)
+	log.Printf("Address received %s, Address built %s", zombieAddr, zombieURL)
 	result, err := getIsZombie(breaker, zombieURL)
 	if err != nil {
 		log.Printf(err.Error())
